@@ -1,15 +1,16 @@
 import os
 from flask import Flask, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
+# Use the standard tensorflow library again
 import tensorflow as tf
 from PIL import Image
 import numpy as np
-# NEW: Import the norm function from scipy for P-value calculation
 from scipy.stats import norm
 
 # --- Configuration ---
 TARGET_SIZE = (150, 150) 
 CLASS_NAMES = ['Healthy', 'Late Blight']
+# Point back to the original .keras model
 MODEL_PATH = 'leaf_model.keras'
 UPLOAD_FOLDER = 'static/uploads'
 
@@ -17,13 +18,12 @@ UPLOAD_FOLDER = 'static/uploads'
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- Load the Model ---
+# --- Load the Keras Model ---
 try:
     model = tf.keras.models.load_model(MODEL_PATH)
-    print("--- Model loaded successfully! ---")
-    model.summary()
+    print("--- Keras Model loaded successfully! ---")
 except Exception as e:
-    print(f"FATAL: Could not load model. Error: {e}")
+    print(f"FATAL: Could not load Keras model. Error: {e}")
     model = None
 
 # --- Preprocessing Function ---
@@ -47,7 +47,7 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     if model is None:
-        return "Model not loaded. Please check the server logs.", 500
+        return "Model not loaded. Please check server logs.", 500
 
     if 'file' not in request.files:
         return redirect(request.url)
@@ -70,22 +70,17 @@ def predict():
             prediction = model.predict(processed_image)[0][0]
             
             if prediction > 0.5:
-                result = CLASS_NAMES[1] # Late Blight
+                result = CLASS_NAMES[1]
                 confidence = prediction
             else:
-                result = CLASS_NAMES[0] # Healthy
+                result = CLASS_NAMES[0]
                 confidence = 1 - prediction
 
-            # --- NEW: Z-test and P-value Calculation ---
-            # This is a one-sample Z-test for a proportion.
-            # H0: The model is guessing (p=0.5).
-            # H1: The model's prediction is significantly different from a guess.
             z_score = (confidence - 0.5) / (np.sqrt(0.5 * (1 - 0.5) / 1))
             p_value = 1 - norm.cdf(abs(z_score))
             
             template_image_path = os.path.join('uploads', filename).replace('\\', '/')
 
-            # Pass the new values to the template
             return render_template('result.html', 
                                    prediction_text=result, 
                                    image_path=template_image_path,

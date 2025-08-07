@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for the animated gradient background */
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .animated-gradient {
+            background: linear-gradient(-45deg, #d4fcd7, #a5f3fc, #d8b4fe, #fbcfe8);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+        }
+    </style>
+</head>
+<body class="animated-gradient min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Card Container -->
+    <div class="w-full max-w-md bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl p-6 md:p-8 text-center">
+        
+        <!-- Header Section -->
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+            Analysis Complete
+        </h1>
+
+        <!-- Display Uploaded Image -->
+        <!-- Inside templates/result.html -->
+
+<div class="mb-6">
+    <img src="{{ url_for('static', filename=image_path) }}" alt="Uploaded Potato Leaf" class="rounded-lg shadow-lg mx-auto max-h-64">
+</div>
+
+        <!-- Prediction Result -->
+        <div class="mb-6">
+            <p class="text-lg text-gray-600">The model predicts this leaf is:</p>
+            <!-- Conditional Styling for the result -->
+            {% if prediction_text == 'Healthy' %}
+                <p class="text-3xl font-extrabold text-green-600 mt-2">{{ prediction_text }}</p>
+            {% else %}
+                <p class="text-3xl font-extrabold text-red-600 mt-2">{{ prediction_text }}</p>
+            {% endif %}
+        </div>
+
+        <!-- Action Button -->
+        <a href="/" class="w-full block bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all duration-300 shadow-lg">
+            Analyze Another Leaf
+        </a>
+
+    </div>
+
+</body>
+</html>

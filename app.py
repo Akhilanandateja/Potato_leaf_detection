@@ -1,8 +1,8 @@
 import os
 from flask import Flask, request, render_template, redirect, url_for
 from werkzeug.utils import secure_filename
-# Use the standard tensorflow library again
-import tensorflow as tf
+# NEW: Import the TFLite runtime interpreter
+import tflite_runtime.interpreter as tflite
 from PIL import Image
 import numpy as np
 from scipy.stats import norm
@@ -10,28 +10,31 @@ from scipy.stats import norm
 # --- Configuration ---
 TARGET_SIZE = (150, 150) 
 CLASS_NAMES = ['Healthy', 'Late Blight']
-# Point back to the original .keras model
-MODEL_PATH = 'leaf_model.keras'
+# NEW: Point to the optimized .tflite model
+MODEL_PATH = 'leaf_model.tflite'
 UPLOAD_FOLDER = 'static/uploads'
 
 # Initialize the Flask app
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- Load the Keras Model ---
+# --- NEW: Load the TFLite Model ---
 try:
-    model = tf.keras.models.load_model(MODEL_PATH)
-    print("--- Keras Model loaded successfully! ---")
+    interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+    interpreter.allocate_tensors()
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    print("--- TFLite Model loaded successfully! ---")
 except Exception as e:
-    print(f"FATAL: Could not load Keras model. Error: {e}")
-    model = None
+    print(f"FATAL: Could not load TFLite model. Error: {e}")
+    interpreter = None
 
-# --- Preprocessing Function ---
+# --- Preprocessing Function (no changes needed) ---
 def preprocess_image(image_path, target_size):
     try:
         img = Image.open(image_path).convert('RGB')
         img = img.resize(target_size)
-        img_array = np.array(img)
+        img_array = np.array(img, dtype=np.float32) # TFLite expects float32
         img_array = img_array / 255.0
         img_array = np.expand_dims(img_array, axis=0)
         return img_array
@@ -46,7 +49,7 @@ def home():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    if model is None:
+    if interpreter is None:
         return "Model not loaded. Please check server logs.", 500
 
     if 'file' not in request.files:
@@ -67,7 +70,10 @@ def predict():
             return "Error processing the uploaded image.", 500
 
         try:
-            prediction = model.predict(processed_image)[0][0]
+            # --- NEW: Prediction with TFLite Interpreter ---
+            interpreter.set_tensor(input_details[0]['index'], processed_image)
+            interpreter.invoke()
+            prediction = interpreter.get_tensor(output_details[0]['index'])[0][0]
             
             if prediction > 0.5:
                 result = CLASS_NAMES[1]
